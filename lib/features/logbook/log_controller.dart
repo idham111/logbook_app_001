@@ -23,23 +23,27 @@ class LogController extends ChangeNotifier {
     );
     await prefs.setString('logs_$username', data);
   }
-  void addLog(String title, String description) {
+  // TAMBAHAN HOMEWORK — parameter category
+  void addLog(String title, String description, {String category = 'Umum'}) {
     logsNotifier.value = [
       ...logsNotifier.value,
       LogModel(
         title: title,
         description: description,
         timestamp: DateTime.now(),
+        category: category, // TAMBAHAN HOMEWORK
       ),
     ];
     _saveToDisk();
   }
-  void updateLog(int index, String title, String description) {
+  // TAMBAHAN HOMEWORK — parameter category
+  void updateLog(int index, String title, String description, {String category = 'Umum'}) {
     final List<LogModel> updated = List.from(logsNotifier.value);
     updated[index] = LogModel(
       title: title,
       description: description,
       timestamp: updated[index].timestamp,
+      category: category, // TAMBAHAN HOMEWORK
     );
     logsNotifier.value = updated;
     _saveToDisk();

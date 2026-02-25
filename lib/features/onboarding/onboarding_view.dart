@@ -12,6 +12,13 @@ class _OnboardingViewState extends State<OnboardingView> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  // Judul per slide
+  final List<String> _slideTitles = [
+    'Selamat Datang',
+    'Bagaimana Kabarmu?',
+    'Silahkan Masuk',
+  ];
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -45,7 +52,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           height: isActive ? 12 : 10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? Colors.blue : Colors.grey,
+            color: isActive ? Colors.purple : Colors.grey, // Ubah warna purple
           ),
         );
       }),
@@ -55,13 +62,18 @@ class _OnboardingViewState extends State<OnboardingView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black, // Ubah tema hitam
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              "Halaman Onboarding",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              _slideTitles[_currentPage],
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.purple, // Ubah warna purple
+              ),
             ),
             const SizedBox(height: 40),
             SizedBox(
@@ -88,6 +100,10 @@ class _OnboardingViewState extends State<OnboardingView> {
             _buildPageIndicator(),
             const SizedBox(height: 40),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple, // Ubah warna purple
+                foregroundColor: Colors.white, // Ubah warna purple
+              ),
               onPressed: _nextStep,
               child: const Text("Lanjut"),
             ),
