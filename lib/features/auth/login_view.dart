@@ -14,13 +14,11 @@ class _LoginViewState extends State<LoginView> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
-  // Toggle show/hide password
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    // Daftarkan callback agar UI refresh setiap detik saat lock
     _controller.setOnTickCallback(() {
       setState(() {});
     });
@@ -38,12 +36,9 @@ class _LoginViewState extends State<LoginView> {
     String user = _userController.text.trim();
     String pass = _passController.text;
 
-    // Panggil logic di controller
     Map<String, dynamic> result = _controller.login(user, pass);
 
     if (result["success"] == true) {
-      // Navigasi ke CounterView — hanya kirim username
-      // Counter state sepenuhnya dikelola oleh CounterView/Controller
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -52,7 +47,6 @@ class _LoginViewState extends State<LoginView> {
         (route) => false,
       );
     } else {
-      // Tampilkan pesan error dari controller
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result["message"])),
       );
@@ -62,26 +56,51 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login Gatekeeper")),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text(
+          "Login Gatekeeper",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.purple,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // TextField Username
             TextField(
               controller: _userController,
-              decoration: const InputDecoration(labelText: "Username"),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "Username",
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white54),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.purple),
+                ),
+              ),
             ),
 
-            // TextField Password + toggle visibility
             TextField(
               controller: _passController,
               obscureText: _obscurePassword,
+              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: "Password",
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white54),
+                ),
+                focusedBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.purple),
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.white70,
                   ),
                   onPressed: () {
                     setState(() {
@@ -94,8 +113,13 @@ class _LoginViewState extends State<LoginView> {
 
             const SizedBox(height: 20),
 
-            // Tombol Masuk — disabled saat locked
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.purple.withOpacity(0.3),
+                disabledForegroundColor: Colors.white54,
+              ),
               onPressed: _controller.isLocked ? null : _handleLogin,
               child: Text(
                 _controller.isLocked

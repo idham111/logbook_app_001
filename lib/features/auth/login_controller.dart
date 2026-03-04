@@ -3,27 +3,21 @@ import 'package:flutter/material.dart';
 
 
 class LoginController {
-  // Database sederhana: Map username → password
   final Map<String, String> _users = {
     "admin": "123",
     "idham": "456",
   };
 
-  // Sistem batas percobaan
   int _failCount = 0;
   bool _isLocked = false;
   int _remainingSeconds = 0;
   Timer? _lockTimer;
 
-  // Getter untuk View
   bool get isLocked => _isLocked;
   int get remainingSeconds => _remainingSeconds;
   int get failCount => _failCount;
 
-  /// Login dengan validasi lengkap.
-  /// Mengembalikan Map: { "success": bool, "message": String }
   Map<String, dynamic> login(String username, String password) {
-    // Cek apakah sedang dikunci
     if (_isLocked) {
       return {
         "success": false,
@@ -31,7 +25,6 @@ class LoginController {
       };
     }
 
-    // Validasi input kosong
     if (username.isEmpty && password.isEmpty) {
       return {"success": false, "message": "Username dan Password harus diisi!"};
     }
@@ -42,13 +35,11 @@ class LoginController {
       return {"success": false, "message": "Password tidak boleh kosong!"};
     }
 
-    // Cek kredensial
     if (_users.containsKey(username) && _users[username] == password) {
-      _failCount = 0; // Reset jika berhasil
+      _failCount = 0;
       return {"success": true, "message": "Login berhasil!"};
     }
 
-    // Login gagal
     _failCount++;
     int sisa = 3 - _failCount;
 
@@ -66,14 +57,12 @@ class LoginController {
     };
   }
 
-  /// Mulai timer kunci 10 detik
   void _startLockTimer() {
     _isLocked = true;
     _remainingSeconds = 10;
 
     _lockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _remainingSeconds--;
-      // Callback dipanggil dari View via onTick
       _onTickCallback?.call();
 
       if (_remainingSeconds <= 0) {
@@ -85,14 +74,12 @@ class LoginController {
     });
   }
 
-  // Callback agar View bisa setState setiap detik
   VoidCallback? _onTickCallback;
 
   void setOnTickCallback(VoidCallback callback) {
     _onTickCallback = callback;
   }
 
-  /// Bersihkan timer saat View di-dispose
   void dispose() {
     _lockTimer?.cancel();
   }

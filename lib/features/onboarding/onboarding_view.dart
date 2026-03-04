@@ -12,7 +12,6 @@ class _OnboardingViewState extends State<OnboardingView> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Judul per slide
   final List<String> _slideTitles = [
     'Selamat Datang',
     'Bagaimana Kabarmu?',
@@ -32,7 +31,6 @@ class _OnboardingViewState extends State<OnboardingView> {
         curve: Curves.easeInOut,
       );
     } else {
-      // Halaman terakhir → pindah ke LoginView
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginView()),
@@ -40,7 +38,6 @@ class _OnboardingViewState extends State<OnboardingView> {
     }
   }
 
-  // Widget indikator titik (dot indicator)
   Widget _buildPageIndicator() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -52,7 +49,7 @@ class _OnboardingViewState extends State<OnboardingView> {
           height: isActive ? 12 : 10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? Colors.purple : Colors.grey, // Ubah warna purple
+            color: isActive ? Colors.purple : Colors.grey,
           ),
         );
       }),
@@ -62,7 +59,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Ubah tema hitam
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -72,7 +69,7 @@ class _OnboardingViewState extends State<OnboardingView> {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.purple, // Ubah warna purple
+                color: Colors.purple,
               ),
             ),
             const SizedBox(height: 40),
@@ -96,13 +93,12 @@ class _OnboardingViewState extends State<OnboardingView> {
               ),
             ),
             const SizedBox(height: 20),
-            // Page Indicator (3 bulatan)
             _buildPageIndicator(),
             const SizedBox(height: 40),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple, // Ubah warna purple
-                foregroundColor: Colors.white, // Ubah warna purple
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
               ),
               onPressed: _nextStep,
               child: const Text("Lanjut"),

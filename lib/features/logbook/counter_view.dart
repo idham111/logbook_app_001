@@ -35,7 +35,7 @@ class _CounterViewState extends State<CounterView> {
 
   void _loadSavedData() async {
     await _controller.loadCounter();
-    setState(() {}); // Refresh UI setelah data di-load
+    setState(() {});
   }
 
   void _incrementCounter() {
@@ -56,7 +56,6 @@ class _CounterViewState extends State<CounterView> {
     });
   }
 
-  // Greeting langsung di Activity — tidak perlu file terpisah
   String _getGreeting(String username) {
     final int hour = DateTime.now().hour;
     String greeting;
@@ -125,7 +124,6 @@ class _CounterViewState extends State<CounterView> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Header: Welcome Banner (dinamis sesuai waktu)
             Text(
               _getGreeting(widget.username),
               style: const TextStyle(fontSize: 20),
@@ -144,7 +142,6 @@ class _CounterViewState extends State<CounterView> {
             ),
             const SizedBox(height: 8),
 
-            // Step input — user bisa ubah nilai langkah
             TextField(
               controller: _stepController,
               keyboardType: TextInputType.number,
@@ -164,7 +161,6 @@ class _CounterViewState extends State<CounterView> {
             ),
             const SizedBox(height: 8),
 
-            // Tombol -, +, Reset
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -188,7 +184,6 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 16),
             const Divider(),
 
-            // Header riwayat
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -198,7 +193,6 @@ class _CounterViewState extends State<CounterView> {
             ),
             const SizedBox(height: 8),
 
-            // ListView riwayat
             Expanded(
               child: _controller.history.isEmpty
                   ? const Center(
@@ -210,11 +204,9 @@ class _CounterViewState extends State<CounterView> {
                   : ListView.builder(
                       itemCount: _controller.history.length,
                       itemBuilder: (context, index) {
-                        // Tampilkan dari terbaru ke terlama
                         final item = _controller.history[
                             _controller.history.length - 1 - index];
 
-                        // Warna berdasarkan jenis aktivitas
                         Color textColor;
                         if (item.contains('+')) {
                           textColor = Colors.green;
