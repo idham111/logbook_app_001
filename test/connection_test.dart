@@ -65,15 +65,18 @@ void main() {
 
       // 1. INSERT
       final testLog = LogModel(
+        username: 'test_user',
         title: 'Test Smoke',
         description: 'Data percobaan dari connection_test.dart',
-        timestamp: DateTime.now(),
+        timestamp: DateTime.now().toIso8601String(),
         category: 'Testing',
+        authorId: 'test_user_001',
+        teamId: 'MEKTRA_KLP_01',
       );
       await mongoService.insertLog(testLog);
 
       // 2. READ
-      final logs = await mongoService.getLogs();
+      final logs = await mongoService.getLogs(teamId: 'MEKTRA_KLP_01');
       final found = logs.any((l) => l.title == 'Test Smoke');
       expect(found, isTrue, reason: 'Log yang baru di-insert tidak ditemukan');
 

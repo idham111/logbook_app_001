@@ -1,11 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-
 class LoginController {
-  final Map<String, String> _users = {
-    "admin": "123",
-    "idham": "456",
+  // Data user lengkap: username → {password, role, teamId, uid}
+  final Map<String, Map<String, String>> _users = {
+    "admin": {
+      "password": "123",
+      "role": "Ketua",
+      "teamId": "MEKTRA_KLP_01",
+      "uid": "uid_admin_001",
+    },
+    "idham": {
+      "password": "456",
+      "role": "Anggota",
+      "teamId": "MEKTRA_KLP_01",
+      "uid": "uid_idham_002",
+    },
   };
 
   int _failCount = 0;
@@ -17,6 +27,7 @@ class LoginController {
   int get remainingSeconds => _remainingSeconds;
   int get failCount => _failCount;
 
+  /// Mengembalikan Map currentUser jika berhasil, atau null jika gagal
   Map<String, dynamic> login(String username, String password) {
     if (_isLocked) {
       return {
@@ -35,9 +46,19 @@ class LoginController {
       return {"success": false, "message": "Password tidak boleh kosong!"};
     }
 
-    if (_users.containsKey(username) && _users[username] == password) {
+    final userData = _users[username];
+    if (userData != null && userData["password"] == password) {
       _failCount = 0;
-      return {"success": true, "message": "Login berhasil!"};
+      return {
+        "success": true,
+        "message": "Login berhasil!",
+        "user": {
+          "username": username,
+          "uid": userData["uid"]!,
+          "role": userData["role"]!,
+          "teamId": userData["teamId"]!,
+        },
+      };
     }
 
     _failCount++;

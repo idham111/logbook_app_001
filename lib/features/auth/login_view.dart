@@ -42,7 +42,9 @@ class _LoginViewState extends State<LoginView> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => LogView(username: user),
+          builder: (context) => LogView(
+            currentUser: result["user"], // ← kirim Map user (username, uid, role, teamId)
+          ),
         ),
         (route) => false,
       );

@@ -79,21 +79,22 @@ class MongoService {
   }
 
 
-  Future<List<LogModel>> getLogs({required String username}) async {
+  /// LANGKAH 4.1: READ dengan Collaborative Filter berdasarkan teamId
+  Future<List<LogModel>> getLogs({required String teamId}) async {
     try {
       final collection = await _getSafeCollection();
 
-      LogHelper.verbose('Fetching data from Cloud...', source: _src);
+      LogHelper.info('DATABASE: Fetching data for Team: $teamId', source: _src);
 
       final data = await collection.find(
-        where.eq('username', username),
+        where.eq('teamId', teamId), // Filter berdasarkan tim, bukan username
       ).toList();
 
       if (data.isEmpty) {
-        LogHelper.warning('DATABASE: Data kosong (0 dokumen)', source: _src);
+        LogHelper.warning('DATABASE: Data kosong untuk team $teamId', source: _src);
       } else {
         LogHelper.info(
-          'DATABASE: ${data.length} dokumen berhasil di-fetch',
+          'DATABASE: ${data.length} dokumen berhasil di-fetch untuk team $teamId',
           source: _src,
         );
       }
@@ -147,7 +148,7 @@ class MongoService {
       }
 
       await collection.replaceOne(
-        where.id(log.id!),
+        where.id(ObjectId.fromHexString(log.id!)),
         log.toMap(),
       );
 
@@ -167,11 +168,11 @@ class MongoService {
   }
 
 
-  Future<void> deleteLog(ObjectId id) async {
+  Future<void> deleteLog(String id) async {
     try {
       final collection = await _getSafeCollection();
 
-      await collection.remove(where.id(id));
+      await collection.remove(where.id(ObjectId.fromHexString(id)));
 
       LogHelper.info('DATABASE: Hapus ID $id berhasil', source: _src);
     } catch (e, stackTrace) {

@@ -3,13 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'log_controller.dart';
 import 'models/log_model.dart';
-import 'package:logbook_app_001/services/mongo_service.dart';
+import 'package:logbook_app_001/services/access_control_service.dart';
 import 'package:logbook_app_001/helpers/log_helper.dart';
+import 'package:logbook_app_001/features/logbook/log_editor_page.dart'; // BARU: Import Editor Page
 import '../auth/login_view.dart';
 
 class LogView extends StatefulWidget {
-  final String username;
-  const LogView({super.key, required this.username});
+  final Map<String, dynamic> currentUser;
+  const LogView({super.key, required this.currentUser});
   @override
   State<LogView> createState() => _LogViewState();
 }
@@ -43,237 +44,76 @@ String _formatRelativeTime(DateTime timestamp) {
 
 class _LogViewState extends State<LogView> {
   late final LogController _controller;
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
+  late final String _username;
+  late final String _userId;
+  late final String _userRole;
+  late final String _teamId;
+
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _selectedCategory = 'Umum';
-
-  // ── HOMEWORK 1: Connection Guard ───────────────────────────────────────
-  bool _isOffline = false;
 
   static const String _src = 'log_view.dart';
-  late Future<List<LogModel>> _logsFuture;
 
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null);
-    _controller = LogController(username: widget.username);
-    LogHelper.info('LogView dibuka untuk user: ${widget.username}', source: _src);
-    _logsFuture = _fetchWithGuard();
-  }
 
-  // ── HOMEWORK 1: Wrapper fetch yang mendeteksi offline ──────────────────
-  Future<List<LogModel>> _fetchWithGuard() async {
-    try {
-      final data = await MongoService().getLogs(username: widget.username);
-      if (mounted) setState(() => _isOffline = false);
-      return data;
-    } catch (e) {
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('socket') ||
-          msg.contains('connection') ||
-          msg.contains('timeout') ||
-          msg.contains('host lookup')) {
-        if (mounted) setState(() => _isOffline = true);
-      }
-      rethrow;
-    }
+    // Extract user info dari currentUser
+    _username = widget.currentUser['username'] as String;
+    _userId = widget.currentUser['uid'] as String;
+    _userRole = widget.currentUser['role'] as String;
+    _teamId = widget.currentUser['teamId'] as String;
+
+    _controller = LogController(
+      username: _username,
+      userId: _userId,
+      userRole: _userRole,
+      teamId: _teamId,
+    );
+
+    LogHelper.info(
+      'LogView dibuka untuk user: $_username (Role: $_userRole, Team: $_teamId)',
+      source: _src,
+    );
+    
+    // LANGKAH 4: Panggil loadLogs setelah frame pertama selesai untuk hindari Navigator error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.loadLogs();
+    });
   }
 
   void _refreshLogs() {
     LogHelper.info('UI: Refresh data dipicu', source: _src);
-    setState(() {
-      _logsFuture = _fetchWithGuard();
+    _controller.loadLogs(); // LANGKAH 4: Gunakan loadLogs() yang Offline-First
+  }
+
+  // ── LANGKAH 3.3: Navigasi ke Halaman Editor (Gantikan Dialog Lama) ────
+  void _goToEditor({LogModel? log, int? index}) {
+    LogHelper.info(
+      'UI: Navigasi ke Editor (${log == null ? "Tambah Baru" : "Edit"})',
+      source: _src,
+    );
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LogEditorPage(
+          log: log,
+          index: index,
+          controller: _controller,
+          currentUser: {
+            'username': _username,
+            'uid': _userId,
+            'role': _userRole,
+            'teamId': _teamId,
+          },
+        ),
+      ),
+    ).then((_) {
+      // Refresh data setelah kembali dari editor
+      _refreshLogs();
     });
-  }
-
-  void _showAddDialog() {
-    _titleController.clear();
-    _descController.clear();
-    _selectedCategory = 'Umum';
-
-    LogHelper.info('UI: User membuka dialog tambah catatan', source: _src);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Tambah Catatan'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Judul'),
-                  ),
-                  TextField(
-                    controller: _descController,
-                    decoration: const InputDecoration(labelText: 'Deskripsi'),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: kCategories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => _selectedCategory = val);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    if (_titleController.text.isNotEmpty) {
-                      Navigator.pop(context);
-                      LogHelper.info(
-                        "UI: User menekan tombol Simpan ('${_titleController.text}')",
-                        source: _src,
-                      );
-                      try {
-                        await _controller.addLog(
-                          _titleController.text,
-                          _descController.text,
-                          category: _selectedCategory,
-                        );
-                        LogHelper.info('UI: Data berhasil disimpan', source: _src);
-                      } catch (e) {
-                        LogHelper.severe('UI: Data gagal disimpan', source: _src, error: e);
-                      }
-                      _refreshLogs();
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showEditDialog(int index, List<LogModel> logs) {
-    final current = logs[index];
-    _titleController.text = current.title;
-    _descController.text = current.description;
-    _selectedCategory = current.category;
-
-    LogHelper.info("UI: User membuka dialog edit ('${current.title}')", source: _src);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit Catatan'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Judul'),
-                  ),
-                  TextField(
-                    controller: _descController,
-                    decoration: const InputDecoration(labelText: 'Deskripsi'),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: kCategories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => _selectedCategory = val);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Batal'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    if (_titleController.text.isNotEmpty) {
-                      Navigator.pop(context);
-                      LogHelper.info(
-                        "UI: User menekan simpan edit ('${_titleController.text}')",
-                        source: _src,
-                      );
-                      try {
-                        await _controller.updateLog(
-                          index,
-                          _titleController.text,
-                          _descController.text,
-                          category: _selectedCategory,
-                        );
-                        LogHelper.info('UI: Data berhasil diupdate', source: _src);
-                      } catch (e) {
-                        LogHelper.severe('UI: Data gagal diupdate', source: _src, error: e);
-                      }
-                      _refreshLogs();
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ── HOMEWORK 1: Banner offline ─────────────────────────────────────────
-  Widget _buildOfflineBanner() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: _isOffline
-          ? Container(
-              key: const ValueKey('offline'),
-              width: double.infinity,
-              color: Colors.red.shade900,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Offline — Tidak dapat terhubung ke server. Tarik untuk mencoba lagi.',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-                    onPressed: _refreshLogs,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            )
-          : const SizedBox.shrink(key: ValueKey('online')),
-    );
   }
 
   @override
@@ -282,12 +122,28 @@ class _LogViewState extends State<LogView> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: Text(
-          'Logbook: ${widget.username}',
+          'Logbook: $_username ($_userRole)',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.purple,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // LANGKAH 4.3: Indikator Visual Sync Status
+          ValueListenableBuilder<bool>(
+            valueListenable: _controller.syncStatusNotifier,
+            builder: (context, isSynced, _) {
+              return Tooltip(
+                message: isSynced 
+                    ? 'Data tersinkron dengan Cloud' 
+                    : 'Data tertahan lokal (offline)',
+                child: Icon(
+                  isSynced ? Icons.cloud_done : Icons.cloud_off,
+                  color: isSynced ? Colors.greenAccent : Colors.orangeAccent,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _refreshLogs,
@@ -325,9 +181,6 @@ class _LogViewState extends State<LogView> {
       ),
       body: Column(
         children: [
-          // ── HOMEWORK 1: Offline banner ─────────────────────────────────
-          _buildOfflineBanner(),
-
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: TextField(
@@ -365,52 +218,11 @@ class _LogViewState extends State<LogView> {
             ),
           ),
 
+          // LANGKAH 4: ValueListenableBuilder untuk Offline-First
           Expanded(
-            child: FutureBuilder<List<LogModel>>(
-              future: _logsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: Colors.purple),
-                        SizedBox(height: 16),
-                        Text(
-                          'Mengambil data dari Cloud...',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.cloud_off, size: 64, color: Colors.redAccent),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Tidak dapat terhubung ke server.\nPastikan internet aktif lalu coba lagi.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.redAccent, fontSize: 14),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _refreshLogs,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final logs = snapshot.data ?? [];
-                _controller.logsNotifier.value = logs;
-
+            child: ValueListenableBuilder<List<LogModel>>(
+              valueListenable: _controller.logsNotifier,
+              builder: (context, logs, child) {
                 if (logs.isEmpty) {
                   return Center(
                     child: Column(
@@ -437,7 +249,10 @@ class _LogViewState extends State<LogView> {
                 final filteredLogs = _searchQuery.isEmpty
                     ? logs
                     : logs
-                        .where((l) => l.title.toLowerCase().contains(_searchQuery))
+                        .where((l) => 
+                            l.title.toLowerCase().contains(_searchQuery) ||
+                            l.description.toLowerCase().contains(_searchQuery)
+                        )
                         .toList();
 
                 if (filteredLogs.isEmpty) {
@@ -487,14 +302,14 @@ class _LogViewState extends State<LogView> {
                               Tooltip(
                                 message: DateFormat(
                                         'EEEE, d MMMM yyyy — HH:mm', 'id_ID')
-                                    .format(log.timestamp),
+                                    .format(log.timestampDate),
                                 child: Row(
                                   children: [
                                     const Icon(Icons.access_time,
                                         size: 14, color: Colors.white54),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _formatRelativeTime(log.timestamp),
+                                      _formatRelativeTime(log.timestampDate),
                                       style: const TextStyle(
                                           fontSize: 12, color: Colors.white54),
                                     ),
@@ -522,27 +337,49 @@ class _LogViewState extends State<LogView> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.white70),
-                                onPressed: () => _showEditDialog(originalIndex, logs),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.white70),
-                                onPressed: () async {
-                                  LogHelper.info(
-                                    "UI: User menekan hapus ('${log.title}')",
-                                    source: _src,
-                                  );
-                                  try {
-                                    await _controller.removeLog(originalIndex);
-                                    LogHelper.info('UI: Data berhasil dihapus', source: _src);
-                                  } catch (e) {
-                                    LogHelper.severe('UI: Data gagal dihapus',
-                                        source: _src, error: e);
-                                  }
-                                  _refreshLogs();
-                                },
-                              ),
+                              // ── LANGKAH 2.3 & 3.3: Conditional Rendering untuk Edit ──────────
+                              if (AccessControlService.canPerform(
+                                _userRole,
+                                AccessControlService.actionUpdate,
+                                isOwner: log.authorId == _userId,
+                              ))
+                                IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.white70),
+                                  onPressed: () => _goToEditor(log: log, index: originalIndex),
+                                ),
+
+                              // ── LANGKAH 2.3: Conditional Rendering untuk Delete ──────────
+                              if (AccessControlService.canPerform(
+                                _userRole,
+                                AccessControlService.actionDelete,
+                                isOwner: log.authorId == _userId,
+                              ))
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.white70),
+                                  onPressed: () async {
+                                    LogHelper.info(
+                                      "UI: User menekan hapus ('${log.title}')",
+                                      source: _src,
+                                    );
+                                    try {
+                                      await _controller.removeLog(originalIndex);
+                                      LogHelper.info('UI: Data berhasil dihapus', source: _src);
+                                    } catch (e) {
+                                      LogHelper.severe('UI: Data gagal dihapus',
+                                          source: _src, error: e);
+                                      // Tampilkan error ke user
+                                      if (mounted && context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(e.toString()),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                    _refreshLogs();
+                                  },
+                                ),
                             ],
                           ),
                         ),
@@ -557,16 +394,15 @@ class _LogViewState extends State<LogView> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.purple,
-        onPressed: _showAddDialog,
+        onPressed: () => _goToEditor(), // LANGKAH 3.3: Navigasi ke Editor Page
         child: const Icon(Icons.add, color: Colors.white),
+        tooltip: 'Tambah Catatan Baru',
       ),
     );
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
     _searchController.dispose();
     super.dispose();
   }
